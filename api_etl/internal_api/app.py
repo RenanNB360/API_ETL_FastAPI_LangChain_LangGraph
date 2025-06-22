@@ -1,10 +1,12 @@
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from api_etl.internal_api.database import get_session
 from api_etl.internal_api.models import User
-from api_etl.internal_api.schemas import Message, UserList, UserPublic, UserSchema
+from api_etl.internal_api.schemas import Message, Token, UserList, UserPublic, UserSchema
+from api_etl.internal_api.security import get_password_hash, verify_password
 
 app = FastAPI()
 
@@ -25,7 +27,9 @@ def create_user(user: UserSchema, session=Depends(get_session)):
         elif db_user.email == user.email:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Email already exists')
 
-    db_user = User(username=user.username, position=user.position, email=user.email, password=user.password)
+    db_user = User(
+        username=user.username, position=user.position, email=user.email, password=get_password_hash(user.password)
+    )
 
     session.add(db_user)
     session.commit()
@@ -41,10 +45,6 @@ def read_user(user_id: int, session=Depends(get_session)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
 
     return user_db
-
-    """if user_id < 1 or user_id > len(database):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
-    return database[user_id - 1]"""
 
 
 @app.get('/users/', status_code=status.HTTP_200_OK, response_model=UserList)
@@ -63,7 +63,7 @@ def update_user(user_id: int, user: UserSchema, session=Depends(get_session)):
         user_db.email = user.email
         user_db.username = user.username
         user_db.position = user.position
-        user_db.password = user.password
+        user_db.password = get_password_hash(user.password)
 
         session.add(user_db)
         session.commit()
@@ -73,12 +73,6 @@ def update_user(user_id: int, user: UserSchema, session=Depends(get_session)):
 
     except IntegrityError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='Username or Email already exists')
-
-    """user_with_id = UserDB(**user.model_dump(), id=user_id)
-    if user_id < 1 or user_id > len(database):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
-    database[user_id - 1] = user_with_id
-    return user_with_id"""
 
 
 @app.delete('/users/{user_id}', status_code=status.HTTP_200_OK, response_model=Message)
@@ -92,6 +86,13 @@ def delete_user(user_id: int, session=Depends(get_session)):
 
     return Message(message='User deleted!')
 
-    """if user_id < 1 or user_id > len(database):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
-    return database.pop(user_id - 1)"""
+
+@app.post('/token', response_model=Token)
+def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), session=Depends(get_session)):
+    user = session.scalar(select(User).where(User.username == form_data.username))
+
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password')
+
+    if not verify_password(form_data.password, user.password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password')
