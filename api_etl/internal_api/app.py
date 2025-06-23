@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from api_etl.internal_api.database import get_session
 from api_etl.internal_api.models import User
 from api_etl.internal_api.schemas import Message, Token, UserList, UserPublic, UserSchema
-from api_etl.internal_api.security import get_password_hash, verify_password
+from api_etl.internal_api.security import create_access_token, get_current_user, get_password_hash, verify_password
 
 app = FastAPI()
 
@@ -48,7 +48,10 @@ def read_user(user_id: int, session=Depends(get_session)):
 
 
 @app.get('/users/', status_code=status.HTTP_200_OK, response_model=UserList)
-def read_users(offset: int = 0, limit: int = 10, session=Depends(get_session)):
+def read_users(
+    offset: int = 0,
+    limit: int = 10, session=Depends(get_session), current_user=Depends(get_current_user)
+):
     users = session.scalars(select(User).limit(limit).offset(offset))
     return {'users': users}
 
@@ -96,3 +99,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), ses
 
     if not verify_password(form_data.password, user.password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Incorrect email or password')
+
+    access_token = create_access_token(data={'sub': user.email})
+    return {'access_token': access_token, 'token_type': 'Bearer'}

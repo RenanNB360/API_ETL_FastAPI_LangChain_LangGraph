@@ -65,8 +65,8 @@ def test_read_user_return_not_found(client):
     assert response.json() == {'detail': 'User not found!'}
 
 
-def test_read_users(client):
-    response = client.get('/users/')
+def test_read_users(client, token):
+    response = client.get('/users/', headers=...)
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {'users': []}
@@ -127,3 +127,12 @@ def test_delete_user_return_not_found(client):
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert response.json() == {'detail': 'User not found!'}
+
+
+def test_get_token(client, user):
+    response = client.post('/token', data={'username': user.username, 'password': user.clean_password})
+    token = response.json()
+
+    assert response.status_code == status.HTTP_200_OK
+    assert token['token_type'] == 'Bearer'
+    assert 'access_token' in token
