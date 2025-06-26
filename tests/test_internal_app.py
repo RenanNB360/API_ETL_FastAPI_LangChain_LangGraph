@@ -65,16 +65,9 @@ def test_read_user_return_not_found(client):
     assert response.json() == {'detail': 'User not found!'}
 
 
-def test_read_users(client, token):
-    response = client.get('/users/', headers=...)
-
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json() == {'users': []}
-
-
-def test_read_users_with_users(client, user):
+def test_read_users(client, user, token):
     user_schema = UserPublic.model_validate(user).model_dump()
-    response = client.get('/users/')
+    response = client.get('/users/', headers={'Authorization': f'Bearer {token}'})
 
     assert response.status_code == status.HTTP_200_OK
     assert response.json() == {'users': [user_schema]}
