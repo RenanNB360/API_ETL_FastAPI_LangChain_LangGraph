@@ -8,10 +8,10 @@ from api_etl.internal_api.models import User
 from api_etl.internal_api.schemas import Message, Token, UserList, UserPublic, UserSchema
 from api_etl.internal_api.security import (
     create_access_token,
+    get_admin_user,
     get_current_user,
     get_password_hash,
     verify_password,
-    get_admin_user
 )
 
 app = FastAPI()
@@ -50,12 +50,6 @@ def read_user(user_id: int, session=Depends(get_session), current_user: User = D
     if not user_db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
 
-    """if current_user.id != user_id:
-        raise HTTPException(
-            status_code= status.HTTP_403_FORBIDDEN,
-            detail = 'Not enough permissions'
-        )"""
-
     return user_db
 
 
@@ -63,7 +57,6 @@ def read_user(user_id: int, session=Depends(get_session), current_user: User = D
 def read_users(
     offset: int = 0, limit: int = 10, session=Depends(get_session), current_user: User = Depends(get_current_user)
 ):
-    
     users = session.scalars(select(User).limit(limit).offset(offset))
     return {'users': users}
 
@@ -75,12 +68,6 @@ def update_user(
     user_db = session.scalar(select(User).where(User.id == user_id))
     if not user_db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
-
-    """if current_user.position != 'administrator':
-        raise HTTPException(
-            status_code= status.HTTP_403_FORBIDDEN,
-            detail = 'Not enough permissions'
-        )"""
 
     try:
         user_db.email = user.email
@@ -104,12 +91,6 @@ def delete_user(user_id: int, session=Depends(get_session), current_user: User =
     if not user_db:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found!')
 
-    """if current_user.position != 'administrator':
-        raise HTTPException(
-            status_code= status.HTTP_403_FORBIDDEN,
-            detail = 'Not enough permissions'
-        )"""
-
     session.delete(user_db)
     session.commit()
 
@@ -128,3 +109,6 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), ses
 
     access_token = create_access_token(data={'sub': user.email})
     return {'access_token': access_token, 'token_type': 'Bearer'}
+
+
+# Criar os testes, parou no tempo 1:54:04

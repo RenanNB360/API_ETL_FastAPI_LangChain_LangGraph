@@ -71,3 +71,20 @@ def token(client, user):
     response = client.post('/token', data={'username': user.username, 'password': user.clean_password})
 
     return response.json()['access_token']
+
+
+@pytest.fixture
+def admin_user(session):
+    user = User(
+        username='admin', position='administrator', email='admin@example.com', password=get_password_hash('admin123')
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def admin_token(client, admin_user):
+    response = client.post('/token', data={'username': admin_user.username, 'password': 'admin123'})
+    return response.json()['access_token']
