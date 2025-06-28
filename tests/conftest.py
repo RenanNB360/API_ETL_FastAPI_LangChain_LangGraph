@@ -7,10 +7,10 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from api_etl.internal_api.access_control.security import get_password_hash
 from api_etl.internal_api.app import app
-from api_etl.internal_api.database import get_session
-from api_etl.internal_api.models import User, table_registry
-from api_etl.internal_api.security import get_password_hash
+from api_etl.internal_api.utils.database import get_session
+from api_etl.internal_api.utils.models import User, table_registry
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def user(session):
 
 @pytest.fixture
 def token(client, user):
-    response = client.post('/token', data={'username': user.username, 'password': user.clean_password})
+    response = client.post('/auth/token', data={'username': user.username, 'password': user.clean_password})
 
     return response.json()['access_token']
 
@@ -86,5 +86,5 @@ def admin_user(session):
 
 @pytest.fixture
 def admin_token(client, admin_user):
-    response = client.post('/token', data={'username': admin_user.username, 'password': 'admin123'})
+    response = client.post('/auth/token', data={'username': admin_user.username, 'password': 'admin123'})
     return response.json()['access_token']

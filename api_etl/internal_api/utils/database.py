@@ -2,7 +2,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from api_etl.internal_api.settings import Settings
+from api_etl.internal_api.access_control.settings import Settings
 
 engine = create_engine(Settings().DATABASE_URL)
 

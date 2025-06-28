@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy import select
 
-from api_etl.internal_api.models import User
+from api_etl.internal_api.utils.models import User
 
 
 def test_create_user(session, mock_db_time):
