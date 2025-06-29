@@ -3,12 +3,9 @@ from fastapi import HTTPException, status
 from jwt import decode, encode
 
 from api_etl.internal_api.access_control.security import create_access_token, get_current_user
-from api_etl.internal_api.access_control.settings import Settings
-
-settings = Settings()
 
 
-def test_jwt():
+def test_jwt(settings):
     data = {'test': 'test'}
     token = create_access_token(data)
 
@@ -18,7 +15,7 @@ def test_jwt():
     assert 'exp' in decoded
 
 
-def test_get_current_user_missing_subject_email(session):
+def test_get_current_user_missing_subject_email(session, settings):
     invalid_token = encode({}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     with pytest.raises(HTTPException) as exc_info:
@@ -28,7 +25,7 @@ def test_get_current_user_missing_subject_email(session):
     assert exc_info.value.detail == 'Could not validate credentials'
 
 
-def test_get_current_user_not_found(session):
+def test_get_current_user_not_found(session, settings):
     valid_token = encode({'sub': 'nao_existe@example.com'}, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     with pytest.raises(HTTPException) as exc_info:

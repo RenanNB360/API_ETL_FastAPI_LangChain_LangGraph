@@ -2,12 +2,14 @@ from contextlib import contextmanager
 from datetime import datetime
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from api_etl.internal_api.access_control.security import get_password_hash
+from api_etl.internal_api.access_control.settings import Settings
 from api_etl.internal_api.app import app
 from api_etl.internal_api.utils.database import get_session
 from api_etl.internal_api.utils.models import User, table_registry
@@ -25,14 +27,26 @@ def client(session):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def session():
-    engine = create_engine('sqlite:///:memory:', connect_args={'check_same_thread': False}, poolclass=StaticPool)
-    table_registry.metadata.create_all(engine)
-    with Session(engine) as session:
+@pytest_asyncio.fixture
+async def session():
+    engine = create_async_engine(
+        'sqlite+aiosqlite:///database.db', connect_args={'check_same_thread': False}, poolclass=StaticPool
+    )
+    # table_registry.metadata.create_all(engine)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(table_registry.metadata.create_all)
+
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         yield session
 
-    table_registry.metadata.drop_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(table_registry.metadata.drop_all)
+
+    """async with AsyncSession(engine) as session:
+        yield session
+
+    table_registry.metadata.drop_all(engine)"""
 
 
 @contextmanager
@@ -54,7 +68,7 @@ def mock_db_time():
 
 
 @pytest.fixture
-def user(session):
+def user(session: AsyncSession):
     password = 'test123'
     user = User(username='test', position='Tester', email='test@example.com', password=get_password_hash(password))
     session.add(user)
@@ -88,3 +102,8 @@ def admin_user(session):
 def admin_token(client, admin_user):
     response = client.post('/auth/token', data={'username': admin_user.username, 'password': 'admin123'})
     return response.json()['access_token']
+
+
+@pytest.fixture
+def settings():
+    return Settings()
